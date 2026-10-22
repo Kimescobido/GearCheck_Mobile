@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "492847927453",
+    "project_id": "ppe-detection-6b4b5",
+    "storage_bucket": "ppe-detection-6b4b5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:492847927453:android:b85804b0fc2c858b170474",
+        "android_client_info": {
+          "package_name": "com.shiraishi_rn.PPEmobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBYtiTg48dbQ-jdD0-Xv9n2Z1EW6m2jhkY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
