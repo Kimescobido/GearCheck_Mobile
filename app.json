@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "PPE-mobile",
+    "name": "GearCheck",
     "slug": "PPE-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -50,8 +50,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "e403f1d6-f5df-4900-aabe-70b22ecb350b"
+        "projectId": "ac18951e-a3ce-41b6-aadd-99abc73e25a6"
       }
-    }
+    },
+    "owner": "kimescobido"
   }
 }

@@ -44,24 +44,28 @@ export default function DashboardScreen() {
       }));
       setAlerts(fetchedAlerts);
       setLoading(false);
+      // Refresh month total when feed updates
+      fetchMonthTotal();
     });
 
-    // 4. Fetch the 1-Month total securely without downloading heavy images
+    // 4. Fetch the Current Month total securely without downloading heavy images
     const fetchMonthTotal = async () => {
       try {
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
 
         const qMonth = query(
           collection(db, 'ppe_alerts'),
-          where('timestamp', '>=', thirtyDaysAgo)
+          where('timestamp', '>=', startOfMonth)
         );
 
         const snapshot = await getCountFromServer(qMonth);
         setMonthTotal(snapshot.data().count);
       } catch (error) {
         console.error("Error fetching monthly total: ", error);
-        setMonthTotal(0); // Fallback on error
+        // Fallback: keep previous or at least show today's count
+        setMonthTotal((prev) => (prev !== '...' ? prev : 0));
       }
     };
 
@@ -140,12 +144,7 @@ export default function DashboardScreen() {
     return { time, date };
   };
 
-  const getIconName = (item: string) => {
-    const lowerItem = item.toLowerCase();
-    if (lowerItem.includes('helmet') || lowerItem.includes('hard hat')) return 'hard-hat';
-    if (lowerItem.includes('vest')) return 'vest';
-    return 'alert-circle-outline';
-  };
+  const getIconName = (_item?: string) => 'alert-circle';
 
   const openDetails = (alertData: any, workerName: string, time: string, date: string) => {
     setSelectedAlert({ ...alertData, workerName, time, date });
@@ -182,8 +181,8 @@ export default function DashboardScreen() {
           >
             <Text style={styles.cardLabel}>Violations Today</Text>
             <Text style={styles.largeNumber}>{loading ? '...' : activeAlerts.length}</Text>
-            <Text style={styles.cardSubLabel}>1 Month Total of Violations</Text>
-            <Text style={styles.largeNumber}>{monthTotal}</Text>
+            <Text style={[styles.cardSubLabel, { marginTop: 4 }]}>This Month's Violations</Text>
+            <Text style={[styles.largeNumber, { marginBottom: 0 }]}>{monthTotal}</Text>
           </LinearGradient>
 
           <View style={styles.systemStatus}>
@@ -235,8 +234,8 @@ export default function DashboardScreen() {
                     </View>
                   </View>
                   <MaterialCommunityIcons
-                    name={getIconName(missingItem) as any}
-                    size={48}
+                    name="alert-circle"
+                    size={44}
                     color="#FFFFFF"
                   />
                 </View>

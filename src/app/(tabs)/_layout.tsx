@@ -1,39 +1,76 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs, usePathname, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
 import { auth, db } from '../../../firebaseConfig';
 
+const BADGE_SEEN_KEY = '@ppe-mobile/acknowledge-last-seen';
+
+// Statuses that mean the alert is already handled — badge should NOT count these
+const HANDLED_STATUSES = ['acknowledged', 'resolved', 'false alarm', 'unsafe', 'safe'];
 
 export default function TabsLayout() {
   const router = useRouter();
   const pathname = usePathname();
   const [pendingCount, setPendingCount] = useState(0);
+  const lastSeenRef = useRef<number>(0);
 
+  // Load last-seen timestamp from storage on mount
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (!user) router.replace('/login');
-    });
-    return unsubscribe;
-  }, [router]);
+    AsyncStorage.getItem(BADGE_SEEN_KEY).then((val) => {
+      if (val) lastSeenRef.current = Number(val);
+    }).catch(() => {});
+  }, []);
 
+  // When officer navigates TO the Acknowledge tab, mark all as seen
+  useEffect(() => {
+    if (pathname === '/acknowledge') {
+      const now = Date.now();
+      lastSeenRef.current = now;
+      AsyncStorage.setItem(BADGE_SEEN_KEY, String(now)).catch(() => {});
+      setPendingCount(0);
+    }
+  }, [pathname]);
+
+  // Listen to recent alerts and count only NEW unseen ones
   useEffect(() => {
     const q = query(collection(db, 'ppe_alerts'), orderBy('timestamp', 'desc'), limit(40));
     const unsubscribeAlerts = onSnapshot(q, (snapshot) => {
-      const pending = snapshot.docs.filter((docSnap) => {
-        const s = (docSnap.data().status || '').toLowerCase();
-        return !['acknowledged', 'resolved', 'false alarm'].includes(s);
+      // Skip badge update if officer is currently on the Acknowledge tab
+      if (pathname === '/acknowledge') {
+        setPendingCount(0);
+        return;
+      }
+      const count = snapshot.docs.filter((docSnap) => {
+        const data = docSnap.data();
+        // Only count if status is NOT already handled
+        const s = (data.status || '').toLowerCase().trim();
+        if (HANDLED_STATUSES.includes(s)) return false;
+        // Only count alerts that arrived AFTER the last time officer saw them
+        const ts: number = data.timestamp?.toMillis
+          ? data.timestamp.toMillis()
+          : (data.timestamp?.seconds ? data.timestamp.seconds * 1000 : 0);
+        return ts > lastSeenRef.current;
       }).length;
-      setPendingCount(pending);
+      setPendingCount(count);
     }, (err) => {
       console.log('Badge listener error:', err);
     });
     return () => unsubscribeAlerts();
-  }, []);
+  }, [pathname]);
+
+  // Auth guard — redirect to login if not signed in
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (!user) router.replace('/login');
+    });
+    return unsubscribeAuth;
+  }, [router]);
 
   useEffect(() => {
     async function registerForPushNotificationsAsync() {
